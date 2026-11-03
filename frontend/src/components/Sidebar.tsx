@@ -1,0 +1,696 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { UserRole } from '../types/database.types';
+import { supabase } from '../lib/supabase';
+import { resolveDepartmentInfo } from '../services/departmentService';
+import {
+  Home, FileText, PlusCircle, MapPin, Bell, User, Settings, HelpCircle, Info,
+  Building2, Users, Clock, Map, ChevronLeft, ChevronRight, X, Activity,
+  CheckCircle2, AlertTriangle, LogOut, UserCheck, LayoutDashboard, Megaphone,
+  Wrench
+} from 'lucide-react';
+
+export function getDepartmentHeadPortalLabel(
+  departmentIdOrCode?: string | number,
+  departmentName?: string,
+  userEmail?: string,
+  userName?: string
+): { mainTitle: string; subtitle: string; fullLabel: string } {
+  const dId = String(departmentIdOrCode || '').trim().toLowerCase();
+  const dName = String(departmentName || '').trim().toLowerCase();
+  const email = String(userEmail || '').trim().toLowerCase();
+  const name = String(userName || '').trim().toLowerCase();
+
+  const codeClean = dId.replace('dept-', '').replace('dept', '').split('-')[0].trim();
+
+  // 1. PWD (Public Works Department)
+  if (
+    codeClean === '1' || codeClean === 'pwd' ||
+    dName.includes('public works') || dName.includes('road') ||
+    email.includes('pwd') || email.includes('rahul.kumar') || name.includes('rahul kumar')
+  ) {
+    return {
+      mainTitle: 'PUBLIC WORKS DEPARTMENT',
+      subtitle: '(PWD) DEPARTMENT HEAD PORTAL',
+      fullLabel: 'PUBLIC WORKS DEPARTMENT (PWD) DEPARTMENT HEAD PORTAL'
+    };
+  }
+
+  // 2. SAN (Sanitation & Waste Management)
+  if (
+    codeClean === '2' || codeClean === 'san' ||
+    dName.includes('sanitation') || dName.includes('waste') ||
+    email.includes('sanitation') || email.includes('amit.sharma') || name.includes('amit sharma')
+  ) {
+    return {
+      mainTitle: 'SANITATION & WASTE MANAGEMENT',
+      subtitle: '(SAN) DEPARTMENT HEAD PORTAL',
+      fullLabel: 'SANITATION & WASTE MANAGEMENT (SAN) DEPARTMENT HEAD PORTAL'
+    };
+  }
+
+  // 3. WTR (Water Supply & Sewerage Board)
+  if (
+    codeClean === '3' || codeClean === 'wtr' ||
+    dName.includes('water') || dName.includes('sewerage') ||
+    email.includes('wtr') || email.includes('water') || email.includes('vikram.patil') || name.includes('vikram patil')
+  ) {
+    return {
+      mainTitle: 'WATER SUPPLY & SEWERAGE',
+      subtitle: '(WTR) DEPARTMENT HEAD PORTAL',
+      fullLabel: 'WATER SUPPLY & SEWERAGE (WTR) DEPARTMENT HEAD PORTAL'
+    };
+  }
+
+  // 4. DRN (Drainage & Sewage Department) - ID 4
+  if (
+    codeClean === '4' || codeClean === 'drn' ||
+    dName.includes('drainage') || dName.includes('sewage') ||
+    email.includes('drn') || email.includes('drainage') || email.includes('sanjay.more') || name.includes('sanjay more')
+  ) {
+    return {
+      mainTitle: 'DRAINAGE & SEWAGE',
+      subtitle: '(DRN) DEPARTMENT HEAD PORTAL',
+      fullLabel: 'DRAINAGE & SEWAGE (DRN) DEPARTMENT HEAD PORTAL'
+    };
+  }
+
+  // 5. ELE (Electrical & Street Lighting) - ID 5
+  if (
+    codeClean === '5' || codeClean === 'ele' ||
+    dName.includes('electrical') || dName.includes('lighting') ||
+    email.includes('ele') || email.includes('electrical') || email.includes('kunal.kulkarni') || name.includes('kunal kulkarni')
+  ) {
+    return {
+      mainTitle: 'ELECTRICAL & STREET LIGHTING',
+      subtitle: '(ELE) DEPARTMENT HEAD PORTAL',
+      fullLabel: 'ELECTRICAL & STREET LIGHTING (ELE) DEPARTMENT HEAD PORTAL'
+    };
+  }
+
+  // 6. TRF (Traffic Management Department) - ID 6
+  if (
+    codeClean === '6' || codeClean === 'trf' ||
+    dName.includes('traffic') ||
+    email.includes('trf') || email.includes('traffic') || email.includes('rohan.deshmukh') || name.includes('rohan deshmukh')
+  ) {
+    return {
+      mainTitle: 'TRAFFIC MANAGEMENT',
+      subtitle: '(TRF) DEPARTMENT HEAD PORTAL',
+      fullLabel: 'TRAFFIC MANAGEMENT (TRF) DEPARTMENT HEAD PORTAL'
+    };
+  }
+
+  // 7. MNT (Maintenance Department) - ID 7
+  if (
+    codeClean === '7' || codeClean === 'mnt' ||
+    dName.includes('maintenance') ||
+    email.includes('mnt') || email.includes('maintenance') || email.includes('aditya.joshi') || name.includes('aditya joshi')
+  ) {
+    return {
+      mainTitle: 'MAINTENANCE',
+      subtitle: '(MNT) DEPARTMENT HEAD PORTAL',
+      fullLabel: 'MAINTENANCE (MNT) DEPARTMENT HEAD PORTAL'
+    };
+  }
+
+  // Fallback
+  return {
+    mainTitle: 'DEPARTMENT HEAD',
+    subtitle: 'PORTAL',
+    fullLabel: 'DEPARTMENT HEAD PORTAL'
+  };
+}
+
+interface SidebarProps {
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
+}
+
+interface NavGroup {
+  title: string;
+  items: {
+    label: string;
+    path: string;
+    icon: React.ElementType;
+  }[];
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({
+  mobileOpen,
+  onMobileClose,
+  isCollapsed,
+  onToggleCollapse
+}) => {
+  const { user, role, logout } = useAuth();
+  const { t, language, translateDepartment, translateRole } = useLanguage();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (mobileOpen) {
+      if (document.activeElement instanceof HTMLElement) {
+        triggerRef.current = document.activeElement;
+      }
+
+      const timer = setTimeout(() => {
+        if (drawerRef.current) {
+          const focusables = drawerRef.current.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusables.length > 0) {
+            focusables[0].focus();
+          }
+        }
+      }, 50);
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onMobileClose();
+          return;
+        }
+
+        if (e.key === 'Tab' && drawerRef.current) {
+          const focusables = Array.from(
+            drawerRef.current.querySelectorAll<HTMLElement>(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter((el) => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement);
+
+          if (focusables.length === 0) return;
+
+          const firstEl = focusables[0];
+          const lastEl = focusables[focusables.length - 1];
+
+          if (e.shiftKey && document.activeElement === firstEl) {
+            e.preventDefault();
+            lastEl.focus();
+          } else if (!e.shiftKey && document.activeElement === lastEl) {
+            e.preventDefault();
+            firstEl.focus();
+          }
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    } else if (triggerRef.current) {
+      const elToFocus = triggerRef.current;
+      triggerRef.current = null;
+      setTimeout(() => {
+        if (elToFocus && typeof elToFocus.focus === 'function') {
+          elToFocus.focus();
+        } else {
+          const toggleBtn = document.querySelector<HTMLElement>('button[aria-label="Open navigation menu"]');
+          toggleBtn?.focus();
+        }
+      }, 50);
+    }
+  }, [mobileOpen, onMobileClose]);
+
+  const activeRole: UserRole = role || user?.role || 'citizen';
+
+  const citizenNav: NavGroup[] = [
+    {
+      title: t('mainMenu'),
+      items: [
+        { label: t('dashboard'), path: '/citizen/portal', icon: Home },
+        { label: t('myComplaints'), path: '/citizen/complaints', icon: FileText },
+        { label: t('trackComplaint'), path: '/citizen/track', icon: Activity },
+        { label: t('reportComplaint'), path: '/citizen/report', icon: PlusCircle },
+        { label: t('nearbyIssues'), path: '/citizen/nearby', icon: MapPin },
+        { label: t('civicWorks'), path: '/citizen/work', icon: Wrench },
+        { label: t('notifications'), path: '/citizen/notifications', icon: Bell }
+      ]
+    },
+    {
+      title: t('accountMenu'),
+      items: [
+        { label: t('announcements'), path: '/citizen/announcements', icon: Megaphone },
+        { label: t('profile'), path: '/citizen/profile', icon: User },
+        { label: t('settings'), path: '/citizen/settings', icon: Settings }
+      ]
+    }
+  ];
+
+  const adminNav: NavGroup[] = [
+    {
+      title: t('overviewMenu'),
+      items: [
+        { label: t('dashboard'), path: '/admin/dashboard', icon: Home }
+      ]
+    },
+    {
+      title: t('complaintManagementMenu'),
+      items: [
+        { label: t('allComplaints'), path: '/admin/complaints', icon: FileText },
+        { label: t('newComplaints'), path: '/admin/complaints/new', icon: PlusCircle },
+        { label: t('pending'), path: '/admin/complaints/pending', icon: Clock },
+        { label: t('inProgress'), path: '/admin/complaints/in-progress', icon: Activity },
+        { label: t('resolved'), path: '/admin/complaints/resolved', icon: CheckCircle2 },
+        { label: t('overdue'), path: '/admin/complaints/overdue', icon: AlertTriangle }
+      ]
+    },
+    {
+      title: t('departmentControlMenu'),
+      items: [
+        { label: t('departments'), path: '/admin/departments', icon: Building2 },
+        { label: t('departmentHeads'), path: '/admin/department-heads', icon: UserCheck },
+        { label: t('departmentDashboard'), path: '/admin/departments/dashboard', icon: LayoutDashboard },
+        { label: t('serviceStaff'), path: '/admin/staff', icon: Users },
+        { label: t('cityMap'), path: '/admin/map', icon: Map }
+      ]
+    },
+    {
+      title: t('analytics'),
+      items: [
+        { label: t('analytics'), path: '/admin/analytics', icon: FileText },
+        { label: t('reports'), path: '/admin/reports', icon: FileText }
+      ]
+    },
+    {
+      title: t('administrationMenu'),
+      items: [
+        { label: t('announcements'), path: '/admin/announcements', icon: Megaphone },
+        { label: t('notifications'), path: '/admin/notifications', icon: Bell },
+        { label: t('settings'), path: '/admin/settings', icon: Settings }
+      ]
+    }
+  ];
+
+  const staffNav: NavGroup[] = [
+    {
+      title: t('mainMenu'),
+      items: [
+        { label: t('dashboard'), path: '/staff/portal', icon: Home },
+        { label: t('myTasks'), path: '/staff/tasks', icon: FileText },
+        { label: t('newAssignments'), path: '/staff/tasks/new', icon: PlusCircle },
+        { label: t('inProgress'), path: '/staff/tasks/in-progress', icon: Activity },
+        { label: t('overdue'), path: '/staff/tasks/overdue', icon: AlertTriangle },
+        { label: t('completed'), path: '/staff/tasks/completed', icon: CheckCircle2 }
+      ]
+    },
+    {
+      title: t('cityMap'),
+      items: [
+        { label: t('taskMap'), path: '/staff/tasks/map', icon: Map }
+      ]
+    },
+    {
+      title: t('accountMenu'),
+      items: [
+        { label: t('announcements'), path: '/staff/announcements', icon: Megaphone },
+        { label: t('notifications'), path: '/staff/notifications', icon: Bell },
+        { label: t('profile'), path: '/staff/profile', icon: User },
+        { label: t('settings'), path: '/staff/settings', icon: Settings }
+      ]
+    }
+  ];
+
+  const departmentHeadNav: NavGroup[] = [
+    {
+      title: t('overviewMenu'),
+      items: [
+        { label: t('dashboard'), path: '/department-head/portal', icon: Home }
+      ]
+    },
+    {
+      title: t('departmentControlMenu'),
+      items: [
+        { label: t('allComplaints'), path: '/department-head/complaints', icon: FileText },
+        { label: t('staff'), path: '/department-head/staff', icon: Users },
+        { label: t('taskAssignment'), path: '/department/tasks', icon: PlusCircle },
+        { label: t('inProgress'), path: '/department/tasks/in-progress', icon: Activity },
+        { label: t('completedWork'), path: '/department-head/tasks/completed', icon: CheckCircle2 },
+        { label: t('overdue'), path: '/department-head/tasks/overdue', icon: AlertTriangle },
+        { label: t('departmentMap'), path: '/department-head/map', icon: Map }
+      ]
+    },
+    {
+      title: t('accountMenu'),
+      items: [
+        { label: t('announcements'), path: '/department-head/announcements', icon: Megaphone },
+        { label: t('notifications'), path: '/department-head/notifications', icon: Bell },
+        { label: t('profile'), path: '/department-head/profile', icon: User },
+        { label: t('settings'), path: '/department-head/settings', icon: Settings }
+      ]
+    }
+  ];
+
+  // Dynamic Department Head Portal Title Resolution
+  const [deptHeadLabel, setDeptHeadLabel] = useState<{ mainTitle: string; subtitle: string; fullLabel: string }>(() => {
+    return getDepartmentHeadPortalLabel(user?.department_id, user?.department_name, user?.email, user?.full_name);
+  });
+
+  useEffect(() => {
+    if (activeRole === 'department_head') {
+      const initial = getDepartmentHeadPortalLabel(user?.department_id, user?.department_name, user?.email, user?.full_name);
+      setDeptHeadLabel(initial);
+
+      // Async DB resolution if user.department_id / department_name is not populated
+      if (supabase && (!user?.department_name || !user?.department_id) && (user?.id || user?.email)) {
+        (async () => {
+          try {
+            const { data } = await supabase
+              .from('department_heads')
+              .select('department_id, name, email, departments(name, code)')
+              .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+              .eq('status', 'active')
+              .maybeSingle();
+
+            if (data) {
+              const res = getDepartmentHeadPortalLabel(
+                data.department_id || (data as any).departments?.code,
+                (data as any).departments?.name,
+                data.email || user.email,
+                data.name || user.full_name
+              );
+              setDeptHeadLabel(res);
+            }
+          } catch (e) {
+            // Ignore fallback errors
+          }
+        })();
+      }
+    }
+  }, [user, activeRole]);
+
+  const navGroups = activeRole === 'city_admin' 
+    ? adminNav 
+    : activeRole === 'department_head'
+    ? departmentHeadNav
+    : activeRole === 'service_staff' 
+    ? staffNav 
+    : citizenNav;
+
+  const roleLabel = activeRole === 'city_admin' 
+    ? t('roleAdmin') 
+    : activeRole === 'department_head'
+    ? t('roleDeptHead')
+    : activeRole === 'service_staff' 
+    ? t('roleStaff') 
+    : t('roleCitizen');
+
+  const roleBadgeStyle = activeRole === 'city_admin' 
+    ? 'bg-blue-50 text-blue-700 border-blue-200' 
+    : activeRole === 'department_head'
+    ? 'bg-purple-50 text-purple-800 border-purple-200'
+    : activeRole === 'service_staff' 
+    ? 'bg-amber-50 text-amber-800 border-amber-200' 
+    : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+  const handlePerformLogout = async () => {
+    setLoggingOut(true);
+    setLogoutError(null);
+    try {
+      if (supabase && supabase.auth) {
+        await supabase.auth.signOut().catch(() => {});
+      }
+      await logout();
+      onMobileClose();
+      setShowLogoutConfirm(false);
+      navigate('/login', { replace: true });
+    } catch (err) {
+      console.error('Logout failed:', err);
+      setLogoutError('Unable to logout. Please try again.');
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
+  const renderNavContent = () => (
+    <div className="flex flex-col justify-between h-full py-4 space-y-6 overflow-y-auto">
+      
+      <div className="space-y-6 px-3">
+        {/* NAGARSETU LOGO & ROLE BADGE */}
+        <div className="flex flex-col space-y-2 pb-4 border-b border-gray-100">
+          <Link to="/" className="flex items-center space-x-2 group">
+            <img
+              src="/logo.png"
+              alt="NAGARSETU"
+              className={`h-9 w-auto object-contain transition-transform group-hover:scale-105 ${isCollapsed ? 'mx-auto' : 'max-w-[180px]'}`}
+            />
+          </Link>
+
+          {!isCollapsed && (
+            activeRole === 'department_head' ? (
+              <div className="px-2 py-1.5 rounded-lg border bg-purple-50 text-purple-800 border-purple-200 text-[10px] font-extrabold tracking-wider font-mono uppercase text-center leading-tight flex flex-col items-center justify-center space-y-0.5 break-words">
+                <span className="block leading-tight">{translateDepartment(deptHeadLabel.mainTitle)}</span>
+                <span className="block leading-tight text-purple-900 font-black">{t('deptHeadPortal')}</span>
+              </div>
+            ) : activeRole === 'service_staff' ? (
+              <div className="px-2 py-1.5 rounded-lg border bg-amber-50 text-amber-800 border-amber-200 text-[10px] font-extrabold tracking-wider font-mono uppercase text-center leading-tight flex flex-col items-center justify-center space-y-0.5 break-words">
+                <span className="block leading-tight">{translateDepartment(staffDeptLabel.name).toUpperCase()}</span>
+                <span className="block leading-tight text-amber-900 font-black">({staffDeptLabel.code}) {t('fieldStaffPortal')}</span>
+              </div>
+            ) : (
+              <div className={`px-2.5 py-1 rounded-lg border text-[10px] font-extrabold tracking-wider font-mono uppercase text-center ${roleBadgeStyle}`}>
+                {roleLabel} {activeRole === 'city_admin' ? '' : t('dashboard')}
+              </div>
+            )
+          )}
+        </div>
+
+        {/* NAVIGATION GROUPS */}
+        {navGroups.map((group) => (
+          <div key={group.title} className="space-y-1">
+            {!isCollapsed && (
+              <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 px-3 py-1 font-outfit">
+                {group.title}
+              </h4>
+            )}
+
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = (() => {
+                  if (location.pathname === item.path) return true;
+
+                  // Department Head route aliases & sub-routes
+                  if (item.path === '/department-head/portal') {
+                    return location.pathname === '/department/portal';
+                  }
+
+                  if (item.path === '/department/tasks') {
+                    return location.pathname.startsWith('/department-head/tasks/assign') ||
+                           location.pathname.startsWith('/department/tasks/assign');
+                  }
+
+                  if (item.path === '/department/tasks/in-progress') {
+                    return location.pathname.startsWith('/department-head/tasks/in-progress');
+                  }
+
+                  if (item.path === '/department-head/tasks/completed') {
+                    return location.pathname.startsWith('/department/tasks/completed');
+                  }
+
+                  if (item.path === '/department-head/tasks/overdue') {
+                    return location.pathname === '/department/tasks/overdue' ||
+                           location.pathname.startsWith('/department-head/tasks/overdue') ||
+                           location.pathname.startsWith('/department/tasks/overdue');
+                  }
+
+                  if (item.path === '/department-head/staff') {
+                    return location.pathname.startsWith('/department-head/staff/');
+                  }
+
+                  if (item.path === '/department-head/map') {
+                    return location.pathname === '/department/map' ||
+                           location.pathname.startsWith('/department-head/map') ||
+                           location.pathname.startsWith('/department/map');
+                  }
+
+                  // Citizen / Admin / Staff scoped sub-routes
+                  if (item.path === '/citizen/complaints') {
+                    return location.pathname.startsWith('/citizen/complaint');
+                  }
+
+                  if (
+                    item.path !== '/citizen/portal' &&
+                    item.path !== '/admin/dashboard' &&
+                    item.path !== '/admin/portal' &&
+                    item.path !== '/staff/portal' &&
+                    item.path !== '/staff/tasks' &&
+                    item.path !== '/department-head/portal' &&
+                    item.path !== '/department/tasks' &&
+                    location.pathname.startsWith(item.path + '/')
+                  ) {
+                    return true;
+                  }
+
+                  return false;
+                })();
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={onMobileClose}
+                    title={isCollapsed ? item.label : undefined}
+                    className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all min-h-[44px] ${
+                      isActive
+                        ? 'bg-emerald-50 text-emerald-700 border-l-4 border-emerald-600 font-extrabold shadow-xs'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-emerald-700 font-medium'
+                    } ${isCollapsed ? 'justify-center px-0' : ''}`}
+                  >
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-emerald-600' : 'text-gray-500'}`} />
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* BOTTOM SECTION WITH LOGOUT */}
+      <div className="px-3 pt-4 border-t border-gray-100 space-y-2 mt-auto">
+        {!isCollapsed && (
+          <div className="space-y-1 text-xs text-gray-500 pb-2 border-b border-gray-100">
+            <a href="#help" className="flex items-center space-x-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors">
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>{t('helpSupport')}</span>
+            </a>
+            <a href="#about" className="flex items-center space-x-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors">
+              <Info className="w-3.5 h-3.5" />
+              <span>{t('aboutNagarsetu')}</span>
+            </a>
+          </div>
+        )}
+
+        {/* LOGOUT BUTTON */}
+        <button
+          type="button"
+          onClick={() => {
+            setLogoutError(null);
+            setShowLogoutConfirm(true);
+          }}
+          title={isCollapsed ? 'Logout' : undefined}
+          className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-rose-50 hover:text-rose-600 transition-all min-h-[44px] ${
+            isCollapsed ? 'justify-center px-0' : ''
+          }`}
+        >
+          <LogOut className="w-4 h-4 shrink-0 text-gray-500 hover:text-rose-600" />
+          {!isCollapsed && <span>{t('logout')}</span>}
+        </button>
+      </div>
+
+    </div>
+  );
+
+  const staffDeptLabel = resolveDepartmentInfo(user?.department_id, user?.department_name);
+
+  return (
+    <>
+      {/* DESKTOP FIXED SIDEBAR */}
+      <aside
+        className={`hidden md:flex flex-col bg-white border-r border-gray-200 fixed top-0 left-0 bottom-0 z-30 transition-all duration-300 font-sans ${
+          isCollapsed ? 'w-20' : 'w-64'
+        }`}
+      >
+        {renderNavContent()}
+
+        {/* COLLAPSE TOGGLE BUTTON */}
+        <button
+          onClick={onToggleCollapse}
+          className="absolute -right-3 top-20 bg-white border border-gray-200 rounded-full p-1 text-gray-500 hover:text-emerald-600 shadow-sm transition-colors min-h-[28px] min-w-[28px] flex items-center justify-center"
+          title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+          aria-label={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+        >
+          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
+      </aside>
+
+      {/* MOBILE DRAWER SIDEBAR */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
+          <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-xs" onClick={onMobileClose} />
+
+          <div ref={drawerRef} className="relative flex-1 max-w-xs w-full bg-white h-full shadow-xl flex flex-col z-10 font-sans">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <span className="font-extrabold text-sm text-gray-900 font-outfit">NAGARSETU Navigation</span>
+              <button
+                onClick={onMobileClose}
+                aria-label="Close navigation menu"
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {renderNavContent()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LOGOUT CONFIRMATION DIALOG MODAL */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-xs font-sans">
+          <div className="max-w-sm w-full bg-white rounded-2xl p-6 border border-gray-200 shadow-md space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-base font-extrabold text-gray-900 font-outfit flex items-center space-x-2">
+                <LogOut className="w-5 h-5 text-rose-600" />
+                <span>{t('confirmLogout')}</span>
+              </h3>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-600 font-medium">
+              {language === 'hi'
+                ? 'क्या आप निश्चित रूप से लॉगआउट करना चाहते हैं? आप नगरसेतु सत्र से बाहर हो जाएंगे।'
+                : language === 'mr'
+                  ? 'तुम्हाला खात्री आहे की तुम्ही लॉगआउट करू इच्छिता? तुम्ही नगरसेतू सत्रातून बाहेर पडाल.'
+                  : 'Are you sure you want to logout? You will be signed out of your NAGARSETU session.'}
+            </p>
+
+            {logoutError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold">
+                {logoutError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs min-h-[44px]"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handlePerformLogout}
+                disabled={loggingOut}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs uppercase min-h-[44px]"
+              >
+                {loggingOut ? t('loading') : t('logout')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};

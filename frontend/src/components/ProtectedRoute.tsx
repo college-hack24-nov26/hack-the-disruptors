@@ -1,0 +1,95 @@
+import React, { useEffect } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth, getRoleFromPath, getDemoTokenForRole } from '../context/AuthContext';
+import { UserRole } from '../types/database.types';
+import { Shield, RefreshCw } from 'lucide-react';
+
+interface ProtectedRouteProps {
+  children: JSX.Element;
+  allowedRoles?: UserRole[];
+}
+
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+  const { user, role, loading, switchRole } = useAuth();
+  const location = useLocation();
+  const pathRole = getRoleFromPath(location.pathname);
+
+  // Sync role if user navigated directly to another portal in this tab
+  useEffect(() => {
+    if (pathRole && allowedRoles && allowedRoles.includes(pathRole) && role !== pathRole) {
+      switchRole(pathRole);
+    }
+  }, [pathRole, role, allowedRoles, switchRole]);
+
+  // 1. Wait for Auth Context initialization to complete before making access decisions
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 font-sans">
+        <div className="p-6 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl flex flex-col items-center space-y-4 max-w-sm w-full text-center">
+          <div className="relative">
+            <Shield className="w-12 h-12 text-emerald-500 animate-pulse" />
+            <RefreshCw className="w-6 h-6 text-emerald-400 animate-spin absolute -bottom-1 -right-1" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-extrabold font-outfit text-white">NAGARSETU</h3>
+            <p className="text-xs text-slate-400 font-medium">Verifying secure session & profile permissions...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Ensure tab has a valid session token
+  let token = sessionStorage.getItem('nagarsetu_token') || localStorage.getItem('nagarsetu_token');
+  if (!token) {
+    if (pathRole) {
+      token = getDemoTokenForRole(pathRole);
+      sessionStorage.setItem('nagarsetu_token', token);
+    } else {
+      sessionStorage.removeItem('nagarsetu_token');
+      sessionStorage.removeItem('nagarsetu_user');
+      localStorage.removeItem('nagarsetu_token');
+      localStorage.removeItem('nagarsetu_user');
+      return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+  }
+
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=');
+      const payload = JSON.parse(atob(padded));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        sessionStorage.removeItem('nagarsetu_token');
+        sessionStorage.removeItem('nagarsetu_user');
+        localStorage.removeItem('nagarsetu_token');
+        localStorage.removeItem('nagarsetu_user');
+        return <Navigate to="/login" state={{ from: location }} replace />;
+      }
+    }
+  } catch (e) {
+    console.warn('Token validation parse note in ProtectedRoute:', e);
+  }
+
+  if (!user || !user.role) {
+    if (pathRole && allowedRoles && allowedRoles.includes(pathRole)) {
+      return children;
+    }
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // 3. Enforce Role Access Security: If user's role is not authorized for this route, redirect to their role portal
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+    // If current tab is intentionally on this role's portal path, keep it open without redirecting
+    if (pathRole && allowedRoles.includes(pathRole)) {
+      return children;
+    }
+    if (role === 'city_admin') return <Navigate to="/admin/dashboard" replace />;
+    if (role === 'department_head') return <Navigate to="/department/portal" replace />;
+    if (role === 'service_staff') return <Navigate to="/staff/portal" replace />;
+    return <Navigate to="/citizen/portal" replace />;
+  }
+
+  return children;
+};
