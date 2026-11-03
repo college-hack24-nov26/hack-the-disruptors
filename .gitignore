@@ -1,0 +1,177 @@
+# ==============================================================================
+# NAGARSETU 3.1 — COMPREHENSIVE REPOSITORY GITIGNORE
+# Multi-Tier Civic Operations Platform (React + Express + FastAPI + Blockchain)
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment Variables, Secrets & Credentials (NEVER COMMIT SENSITIVE DATA)
+# ------------------------------------------------------------------------------
+.env
+*.env
+.env.*
+!.env.example
+!**/.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.vercel
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.cer
+*.crt
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# ------------------------------------------------------------------------------
+# 2. Citizen Personal Data & Uploads (Zero-Leakage Privacy Policy)
+# ------------------------------------------------------------------------------
+backend/uploads/
+uploads/
+**/uploads/
+citizen_data/
+*.csv.raw
+*.dump
+
+# ------------------------------------------------------------------------------
+# 3. Local Databases & Persistence Files (PostgreSQL Dumps, SQLite)
+# ------------------------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.db
+*.db-journal
+backend/*.sqlite*
+backend/data/
+
+# ------------------------------------------------------------------------------
+# 4. Node.js & Frontend Tooling
+# ------------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+
+# Build artifacts
+dist/
+dist-ssr/
+build/
+.cache/
+*.local
+*.tgz
+
+# ------------------------------------------------------------------------------
+# 5. Python & AI Microservice (Virtual Envs, Bytecode & Caches)
+# ------------------------------------------------------------------------------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+eggs/
+.eggs/
+parts/
+var/
+sdist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing, type checking & profiling
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# AI Training runs, temporary extracts & local datasets
+runs/
+**/runs/
+ai_service/temp_extract/
+ai_service/scratch/
+ai_service/data/raw/
+ai_service/runs/
+
+# ------------------------------------------------------------------------------
+# 6. AI Model Weights & Large Binary Files (Track via Git LFS if needed)
+# ------------------------------------------------------------------------------
+*.onnx
+*.safetensors
+*.bin
+*.engine
+# Individual large model weight checkpoints
+ai_service/model/*_v*.pt
+ai_service/model/*.baseline.pt
+ai_service/experiments/**/*.pt
+
+# ------------------------------------------------------------------------------
+# 7. Blockchain Network Crypto Material & Chaincode Build Outputs
+# ------------------------------------------------------------------------------
+blockchain/fabric/network/crypto-config/
+blockchain/fabric/network/channel-artifacts/
+*.block
+*.tx
+
+# ------------------------------------------------------------------------------
+# 8. Serverless & Cloud Deployments
+# ------------------------------------------------------------------------------
+.vercel/
+.serverless/
+.terraform/
+*.tfstate*
+
+# ------------------------------------------------------------------------------
+# 9. Operating System & IDE Artifacts
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# ------------------------------------------------------------------------------
+# 10. Temporary & Scratch Files
+# ------------------------------------------------------------------------------
+scratch/
+*.backup
+*.bak
+*.tmp
+*.temp
+*~
+supabase/.temp/
+
