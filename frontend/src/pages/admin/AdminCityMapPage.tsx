@@ -18,6 +18,7 @@ import { calculateDistanceMeters } from '../../services/locationService';
 import { Complaint, PriorityLevel } from '../../types/database.types';
 import { useRealtimeComplaints } from '../../hooks/useRealtimeComplaints';
 import { NagarSetuMap } from '../../components/NagarSetuMap';
+import { hasValidGoogleMapsKey } from '../../config/mapsConfig';
 import { openGoogleMapsDirections } from '../../utils/navigation';
 import { NagarSetuComplaint } from '../../types/maps';
 import {
@@ -108,10 +109,7 @@ export const AdminCityMapPage: React.FC = () => {
   const [showStaffOverlay, setShowStaffOverlay] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
-  const hasGoogleMapsKey = Boolean(
-    (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) ||
-    (import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY as string)
-  );
+  const hasGoogleMapsKey = hasValidGoogleMapsKey();
   // Default consistently to full-featured Leaflet renderer across environments for complete feature parity
   const [mapEngine, setMapEngine] = useState<'google' | 'leaflet'>('leaflet');
 

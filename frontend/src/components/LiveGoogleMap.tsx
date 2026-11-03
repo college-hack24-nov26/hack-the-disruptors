@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Complaint } from '../types/database.types';
 import { MapPin, AlertTriangle, Navigation, Zap, Building2, Info, Compass, ShieldCheck } from 'lucide-react';
 import { LocationMapPicker } from './LocationMapPicker';
+import { getGoogleMapsApiKey, hasValidGoogleMapsKey } from '../config/mapsConfig';
 
 interface LiveGoogleMapProps {
   complaint: Complaint | null;
@@ -31,10 +32,8 @@ export const LiveGoogleMap: React.FC<LiveGoogleMapProps> = ({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
 
-  const apiKey =
-    (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) ||
-    (import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY as string) ||
-    (typeof window !== 'undefined' ? window.GOOGLE_MAPS_API_KEY : undefined);
+  const apiKey = getGoogleMapsApiKey();
+  const isValidKey = hasValidGoogleMapsKey();
 
   const lat = complaint?.latitude != null ? Number(complaint.latitude) : null;
   const lng = complaint?.longitude != null ? Number(complaint.longitude) : null;
@@ -75,8 +74,8 @@ export const LiveGoogleMap: React.FC<LiveGoogleMapProps> = ({
 
   // 1. Initialize or Load Google Maps API Script
   useEffect(() => {
-    if (!apiKey || apiKey.trim() === '') {
-      console.warn('Google Maps API Key not configured. Enabling fallback map viewer.');
+    if (!isValidKey || !apiKey) {
+      console.warn('Valid Google Maps API Key not configured. Enabling fallback map viewer.');
       setUseFallback(true);
       return;
     }

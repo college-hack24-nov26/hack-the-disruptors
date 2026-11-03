@@ -33,7 +33,7 @@ export const getApiUrl = (): string => {
     return envUrl;
   }
   if (isLocalhost) {
-    return 'http://localhost:5000';
+    return 'http://localhost:5001';
   }
   return '';
 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { Component, ErrorInfo, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AdvancedMarker,
@@ -10,7 +10,65 @@ import {
 import type { MapMouseEvent } from '@vis.gl/react-google-maps';
 import type { LatLng, NagarSetuComplaint } from '../types/maps';
 import { openGoogleMapsDirections } from '../utils/navigation';
+import { getGoogleMapsApiKey, hasValidGoogleMapsKey } from '../config/mapsConfig';
 import '../styles/nagarsetu-maps.css';
+
+interface MapErrorBoundaryProps {
+  children: React.ReactNode;
+  height?: string;
+}
+
+interface MapErrorBoundaryState {
+  hasError: boolean;
+  errorMessage: string;
+}
+
+export class MapErrorBoundary extends Component<MapErrorBoundaryProps, MapErrorBoundaryState> {
+  constructor(props: MapErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, errorMessage: '' };
+  }
+
+  static getDerivedStateFromError(error: Error): MapErrorBoundaryState {
+    return {
+      hasError: true,
+      errorMessage: error?.message || 'Google Maps failed to render cleanly.',
+    };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.warn('MapErrorBoundary caught a Google Maps runtime error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          className="nagarsetu-map-fallback flex flex-col items-center justify-center p-6 bg-amber-50/50 border border-amber-200 rounded-2xl text-center space-y-3"
+          style={{ height: this.props.height || '400px' }}
+        >
+          <div className="w-12 h-12 rounded-2xl bg-amber-100 border border-amber-300 text-amber-700 flex items-center justify-center font-bold text-xl">
+            🗺️
+          </div>
+          <strong className="text-gray-900 font-extrabold text-sm font-outfit">
+            Map Display Notice
+          </strong>
+          <span className="text-xs text-gray-600 max-w-md">
+            The Google Maps layer encountered an initialization issue ({this.state.errorMessage}). Switch to OpenStreetMap or provide a valid Google Maps API Key.
+          </span>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, errorMessage: '' })}
+            className="px-3 py-1.5 text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+          >
+            Retry Map Layer
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export type NagarSetuMapProps = {
   complaints?: NagarSetuComplaint[];
@@ -187,10 +245,8 @@ export function NagarSetuMap({
   detailUrlPrefix,
   showNavigationButton = true,
 }: NagarSetuMapProps) {
-  const apiKey =
-    (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) ||
-    (import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY as string) ||
-    '';
+  const apiKey = getGoogleMapsApiKey();
+  const isValidKey = hasValidGoogleMapsKey();
 
   const validComplaints = useMemo(
     () =>
@@ -207,7 +263,7 @@ export function NagarSetuMap({
     [complaints]
   );
 
-  if (!apiKey || apiKey.trim() === '') {
+  if (!isValidKey || !apiKey) {
     return (
       <div className="nagarsetu-map-fallback" style={{ height }}>
         <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center font-bold text-xl">
@@ -215,7 +271,7 @@ export function NagarSetuMap({
         </div>
         <strong className="text-gray-900 font-extrabold text-sm font-outfit">Google Maps is not configured.</strong>
         <span className="text-xs text-gray-500 max-w-sm">
-          Set <code className="bg-gray-100 text-emerald-800 px-1.5 py-0.5 rounded font-mono text-[11px]">VITE_GOOGLE_MAPS_API_KEY</code> in your environment to view the interactive Google Maps layer.
+          Set a valid <code className="bg-gray-100 text-emerald-800 px-1.5 py-0.5 rounded font-mono text-[11px]">VITE_GOOGLE_MAPS_API_KEY</code> in your environment to view the interactive Google Maps layer, or use the OpenStreetMap layer.
         </span>
       </div>
     );
@@ -230,34 +286,36 @@ export function NagarSetuMap({
   };
 
   return (
-    <APIProvider apiKey={apiKey}>
-      <div className="nagarsetu-map" style={{ height }}>
-        <Map
-          defaultCenter={center}
-          defaultZoom={zoom}
-          mapId={mapId}
-          gestureHandling="greedy"
-          clickableIcons={false}
-          onClick={handleMapClick}
-        >
-          {validComplaints.map((complaint) => (
-            <MarkerWithInfo
-              key={complaint.id}
-              complaint={complaint}
-              onSelect={onComplaintSelect}
-              detailUrlPrefix={detailUrlPrefix}
-              showNavigationButton={showNavigationButton}
-            />
-          ))}
-          {selectedPosition && <SelectedLocationMarker position={selectedPosition} />}
-        </Map>
+    <MapErrorBoundary height={height}>
+      <APIProvider apiKey={apiKey}>
+        <div className="nagarsetu-map" style={{ height }}>
+          <Map
+            defaultCenter={center}
+            defaultZoom={zoom}
+            mapId={mapId}
+            gestureHandling="greedy"
+            clickableIcons={false}
+            onClick={handleMapClick}
+          >
+            {validComplaints.map((complaint) => (
+              <MarkerWithInfo
+                key={complaint.id}
+                complaint={complaint}
+                onSelect={onComplaintSelect}
+                detailUrlPrefix={detailUrlPrefix}
+                showNavigationButton={showNavigationButton}
+              />
+            ))}
+            {selectedPosition && <SelectedLocationMarker position={selectedPosition} />}
+          </Map>
 
-        {enableLocationPicker && (
-          <div className="nagarsetu-map-hint">
-            📍 Click anywhere on the map to set the exact issue location.
-          </div>
-        )}
-      </div>
-    </APIProvider>
+          {enableLocationPicker && (
+            <div className="nagarsetu-map-hint">
+              📍 Click anywhere on the map to set the exact issue location.
+            </div>
+          )}
+        </div>
+      </APIProvider>
+    </MapErrorBoundary>
   );
 }

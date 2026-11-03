@@ -4,6 +4,7 @@ import L from 'leaflet';
 import { MapPin, Navigation } from 'lucide-react';
 import { LocationPicker } from './LocationPicker';
 import { NagarSetuMap } from './NagarSetuMap';
+import { hasValidGoogleMapsKey } from '../config/mapsConfig';
 import { isValidCoordinate, requestFreshGpsLocation } from '../services/locationService';
 
 // Fix standard Leaflet marker icon asset issue
@@ -88,10 +89,7 @@ export const LocationMapPicker: React.FC<MapPickerProps> = ({
   const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
 
-  const hasGoogleMapsKey = Boolean(
-    (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) ||
-    (import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY as string)
-  );
+  const hasGoogleMapsKey = hasValidGoogleMapsKey();
 
   const [mapEngine, setMapEngine] = useState<'google' | 'leaflet'>(
     hasGoogleMapsKey ? 'google' : 'leaflet'

@@ -30,6 +30,7 @@ import { useRealtimeComplaints } from '../../hooks/useRealtimeComplaints';
 import { getValidImageUrl, DEFAULT_CIVIC_IMAGE_PLACEHOLDER } from '../../lib/supabase';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { NagarSetuMap } from '../../components/NagarSetuMap';
+import { hasValidGoogleMapsKey } from '../../config/mapsConfig';
 import { openGoogleMapsDirections } from '../../utils/navigation';
 import {
   Wrench, CheckCircle2, Clock, AlertTriangle, MapPin, Upload,
@@ -286,10 +287,7 @@ export const DepartmentHeadPortal: React.FC = () => {
   const [mapZoom, setMapZoom] = useState<number>(12);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
 
-  const hasGoogleMapsKey = Boolean(
-    (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) ||
-    (import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY as string)
-  );
+  const hasGoogleMapsKey = hasValidGoogleMapsKey();
   const [mapEngine, setMapEngine] = useState<'google' | 'leaflet'>('leaflet');
 
   // Extract staff ID if viewing single staff member

@@ -618,7 +618,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const candidateEndpoints = [
           `${getApiUrl()}/api/auth/login`,
           '/api/auth/login',
-          'http://localhost:5000/api/auth/login'
+          'http://localhost:5001/api/auth/login'
         ];
         const uniqueEndpoints = Array.from(new Set(candidateEndpoints.filter(Boolean)));
 

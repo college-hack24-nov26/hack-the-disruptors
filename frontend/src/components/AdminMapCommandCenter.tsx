@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Complaint } from '../types/database.types';
 import { NagarSetuMap } from './NagarSetuMap';
+import { hasValidGoogleMapsKey } from '../config/mapsConfig';
 import { NagarSetuComplaint } from '../types/maps';
 import { StatusBadge } from './StatusBadge';
 import { PriorityBadge } from './PriorityBadge';
@@ -44,10 +45,7 @@ export const AdminMapCommandCenter: React.FC<MapCommandCenterProps> = ({
   const [selectedPriority, setSelectedPriority] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
 
-  const hasGoogleMapsKey = Boolean(
-    (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) ||
-    (import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY as string)
-  );
+  const hasGoogleMapsKey = hasValidGoogleMapsKey();
 
   const [mapEngine, setMapEngine] = useState<'google' | 'leaflet'>(
     hasGoogleMapsKey ? 'google' : 'leaflet'

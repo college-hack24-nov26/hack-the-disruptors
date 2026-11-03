@@ -18,6 +18,7 @@ import { Complaint, ComplaintStatus } from '../../types/database.types';
 import { useRealtimeComplaints } from '../../hooks/useRealtimeComplaints';
 import { getValidImageUrl, DEFAULT_CIVIC_IMAGE_PLACEHOLDER } from '../../lib/supabase';
 import { NagarSetuMap } from '../../components/NagarSetuMap';
+import { hasValidGoogleMapsKey } from '../../config/mapsConfig';
 import { openGoogleMapsDirections } from '../../utils/navigation';
 import { NagarSetuComplaint } from '../../types/maps';
 import {
@@ -132,10 +133,7 @@ export const StaffTaskMapPage: React.FC = () => {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
-  const hasGoogleMapsKey = Boolean(
-    (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string) ||
-    (import.meta.env.VITE_GOOGLE_MAPS_BROWSER_API_KEY as string)
-  );
+  const hasGoogleMapsKey = hasValidGoogleMapsKey();
   const [mapEngine, setMapEngine] = useState<'google' | 'leaflet'>(
     hasGoogleMapsKey ? 'google' : 'leaflet'
   );

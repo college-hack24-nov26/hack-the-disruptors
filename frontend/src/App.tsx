@@ -182,8 +182,12 @@ export default function App() {
                     <Route path="/department-head/announcements" element={<AnnouncementsWorkspacePage />} />
                     <Route path="/department-head/staff" element={<StaffManagementWorkspacePage />} />
                     {[
+                      '/department',
+                      '/department-head',
                       '/department/portal',
                       '/department-head/portal',
+                      '/department/dashboard',
+                      '/department-head/dashboard',
                       '/department/tasks',
                       '/department/tasks/in-progress',
                       '/department-head/complaints',
@@ -211,7 +215,7 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   >
-                    <Route path="/staff/announcements" element={<AnnouncementsWorkspacePage />} />
+                    <Route path="/staff" element={<StaffPortal />} />
                     <Route path="/staff/portal" element={<StaffPortal />} />
                     <Route path="/staff/dashboard" element={<StaffPortal />} />
                     <Route path="/staff/tasks" element={<StaffPortal />} />
